@@ -39,7 +39,7 @@ func (router *Router) ListenAndServe() {
 	r := mux.NewRouter()
 
 	for _, route := range router.routes {
-		r.HandleFunc(route.Path, routerHandler(router, route.HandleFunc)).Methods(route.Method)
+		r.HandleFunc(route.Path, routerHandler(router, route, route.HandleFunc)).Methods(route.Method)
 	}
 
 	srv := &http.Server{

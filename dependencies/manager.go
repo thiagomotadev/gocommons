@@ -7,18 +7,30 @@ import (
 )
 
 type Manager struct {
-	dependencies map[reflect.Type]interface{}
+	dependencies map[reflect.Type]reflect.Value
+}
+
+func (manager *Manager) Init() {
+	manager.dependencies = make(map[reflect.Type]reflect.Value)
+}
+
+func (manager *Manager) InitWithOtherManager(otherManager *Manager) {
+	manager.dependencies = otherManager.dependencies
 }
 
 func (manager *Manager) Add(dependency interface{}) {
-	reflection.CallFuncByName(dependency, "Init", manager.dependencies)
-	manager.dependencies[reflect.TypeOf(dependency)] = dependency
+	manager.CallMethodByName(dependency, "Init")
+	manager.dependencies[reflect.TypeOf(dependency)] = reflect.ValueOf(dependency)
 }
 
 func (manager Manager) Get(reflectType reflect.Type) interface{} {
 	return manager.dependencies[reflectType]
 }
 
-func (manager Manager) GetAll() map[reflect.Type]interface{} {
-	return manager.dependencies
+func (manager Manager) CallFunc(function interface{}) []reflect.Value {
+	return reflection.CallFunc(function, manager.dependencies)
+}
+
+func (manager Manager) CallMethodByName(model interface{}, name string) []reflect.Value {
+	return reflection.CallMethodByName(model, name, manager.dependencies)
 }

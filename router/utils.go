@@ -3,19 +3,24 @@ package router
 import (
 	"encoding/json"
 	"net/http"
-	"reflect"
 
 	"github.com/gorilla/mux"
-	"github.com/thiagomotadev/gocommons/reflection"
+	"github.com/thiagomotadev/gocommons/dependencies"
 )
 
-func routerHandler(router *Router, handleFunc interface{}) func(w http.ResponseWriter, r *http.Request) {
+func routerHandler(router *Router, route Route, handleFunc interface{}) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		dependencies := router.manager.GetAll()
-		dependencies[reflect.TypeOf(Vars{})] = Vars{Value: mux.Vars(r)}
-		dependencies[reflect.TypeOf(OptionalVars{})] = OptionalVars{Value: r.URL.Query()}
+		manager := dependencies.Manager{}
+		manager.InitWithOtherManager(router.manager)
 
-		handlerResult := reflection.CallFunc(handleFunc, dependencies)
+		if route.UseVars {
+			manager.Add(Vars{Value: mux.Vars(r)})
+		}
+		if route.UseOptionalVars {
+			manager.Add(OptionalVars{Value: r.URL.Query()})
+		}
+
+		handlerResult := manager.CallFunc(handleFunc)
 
 		result := handlerResult[0].Interface().(Result)
 		routerErr := handlerResult[1].Interface().(Error)

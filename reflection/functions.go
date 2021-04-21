@@ -5,8 +5,25 @@ import (
 	"reflect"
 )
 
+func GetFieldTypeAndValue(model interface{}, fieldName string) (fieldType reflect.Type, fieldValue interface{}, err error) {
+	e := reflect.ValueOf(model).Elem()
+	for i := 0; i < e.NumField(); i++ {
+		if fieldName == e.Type().Field(i).Name {
+			fieldType = e.Type().Field(i).Type
+			fieldValue = e.Field(i).Interface()
+			return
+		}
+	}
+	err = fmt.Errorf(
+		`field "%s" not found in model "%v"`,
+		fieldName,
+		GetTypeName(model),
+	)
+	return
+}
+
 func GetID(model interface{}) (id int64, err error) {
-	fieldType, fieldValue, err := fieldValueOf(model, "ID")
+	fieldType, fieldValue, err := GetFieldTypeAndValue(model, "ID")
 	if err != nil {
 		return
 	}
@@ -25,14 +42,30 @@ func GetTypeName(typeInterface interface{}) string {
 	return t.Name()
 }
 
-func CallFunc(function interface{}, inputs map[reflect.Type]interface{}) (results []reflect.Value) {
+func CallFunc(function interface{}, inputs map[reflect.Type]reflect.Value) (results []reflect.Value) {
 	funcValue := reflect.ValueOf(function)
-	results = callFunc(funcValue, inputs)
+	numberOfInputs := funcValue.Type().NumIn()
+
+	funcInputs := make([]reflect.Value, numberOfInputs)
+
+	for index := 0; index < numberOfInputs; index++ {
+		inputType := funcValue.Type().In(index)
+		funcInputs[index] = inputs[inputType]
+	}
+	results = funcValue.Call(funcInputs)
 	return
 }
 
-func CallFuncByName(model interface{}, name string, inputs map[reflect.Type]interface{}) (results []reflect.Value) {
+func CallMethodByName(model interface{}, name string, inputs map[reflect.Type]reflect.Value) (results []reflect.Value) {
 	funcValue := reflect.ValueOf(model).MethodByName(name)
-	results = CallFunc(funcValue, inputs)
+	numberOfInputs := funcValue.Type().NumIn()
+
+	funcInputs := make([]reflect.Value, numberOfInputs)
+
+	for index := 0; index < numberOfInputs; index++ {
+		inputType := funcValue.Type().In(index)
+		funcInputs[index] = inputs[inputType]
+	}
+	results = funcValue.Call(funcInputs)
 	return
 }
